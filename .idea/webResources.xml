@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebResourcesPaths">
+    <contentEntries>
+      <entry url="file://$PROJECT_DIR$">
+        <entryData>
+          <resourceRoots>
+            <path value="file://$PROJECT_DIR$/cmd" />
+            <path value="file://$PROJECT_DIR$/pkg" />
+            <path value="file://$PROJECT_DIR$/cmd/git_status_bar" />
+            <path value="file://$PROJECT_DIR$/pkg/database" />
+            <path value="file://$PROJECT_DIR$/pkg/git" />
+            <path value="file://$PROJECT_DIR$/pkg/model" />
+            <path value="file://$PROJECT_DIR$/cmd/xyz" />
+          </resourceRoots>
+        </entryData>
+      </entry>
+    </contentEntries>
+  </component>
+</project>
