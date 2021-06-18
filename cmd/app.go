@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	syslog "log"
 	"os"
-	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -18,7 +17,6 @@ var (
 )
 
 const (
-	logFile            = "/tmp/.git_status_bar.log"
 	logSamplePerMinute = 29 * 60 * 23
 	maxLogSizeInKb     = 1024 * 20
 )
@@ -29,6 +27,7 @@ func NewApp() *cli.App {
 		Usage:   "personal utility for yogesh",
 		Version: version,
 		Action:  mainAction,
+		EnableBashCompletion: true,
 		Authors: []*cli.Author{
 			{
 				Name:  "Yogesh Lonkar",
@@ -36,34 +35,15 @@ func NewApp() *cli.App {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			var err error
 			syslog.SetOutput(os.Stderr)
 			lvl := zerolog.WarnLevel
-			if c.Bool("debug") {
-				lvl = zerolog.DebugLevel
-			} else if c.Bool("trace") {
+			f := os.Stderr
+			if c.Bool("trace") {
 				lvl = zerolog.TraceLevel
-			} else {
-				if time.Now().Unix()%logSamplePerMinute == 0 {
-					lvl = zerolog.DebugLevel
-				}
+			} else if c.Bool("debug") {
+				lvl = zerolog.DebugLevel
 			}
-			f, err := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
-			if err != nil {
-				syslog.Printf("Could not create log file %q", err)
-			} else {
-				if s, _ := f.Stat(); s != nil && s.Size() > maxLogSizeInKb {
-					err = f.Truncate(0)
-					if err != nil {
-						syslog.Printf("Could not truncate log file %q", err)
-					}
-					_, err = f.Seek(0, 0)
-					if err != nil {
-						syslog.Printf("Could not seek file to strat %q", err)
-					}
-				}
-				log.Logger = log.Output(zerolog.ConsoleWriter{Out: f}).Level(lvl)
-			}
+			log.Logger = log.Output(zerolog.ConsoleWriter{Out: f}).Level(lvl)
 			syslog.SetFlags(0)
 			syslog.SetOutput(ioutil.Discard)
 			log.Debug().Str("Commit", commit).Str("Version", version).Send()
@@ -71,6 +51,7 @@ func NewApp() *cli.App {
 		},
 		Commands: []*cli.Command{
 			gitStatus(),
+			gmailSettings(),
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{

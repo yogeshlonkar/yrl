@@ -12,6 +12,9 @@
             <path value="file://$PROJECT_DIR$/pkg/git" />
             <path value="file://$PROJECT_DIR$/pkg/model" />
             <path value="file://$PROJECT_DIR$/cmd/xyz" />
+            <path value="file://$PROJECT_DIR$/pkg/gmail" />
+            <path value="file://$PROJECT_DIR$/pkg/sync" />
+            <path value="file://$PROJECT_DIR$/pkg/statusline" />
           </resourceRoots>
         </entryData>
       </entry>

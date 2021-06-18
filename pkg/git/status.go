@@ -52,6 +52,10 @@ func (a *Area) parseSymbol(s string) {
 	}
 }
 
+func (a *Area) Count() int {
+	return a.Added + a.Deleted + a.Modified + a.Copied + a.Renamed
+}
+
 func consumeNext(s *bufio.Scanner) string {
 	if s.Scan() {
 		return s.Text()
@@ -139,8 +143,17 @@ func (pi *Status) parseXY(xy string) {
 }
 
 func (pi *Status) Clean() bool {
-	return !pi.IsGone && !pi.Staged.HasChanged() && !pi.UnStaged.HasChanged() &&
+	return !pi.IsNew && !pi.IsGone && !pi.Staged.HasChanged() && !pi.UnStaged.HasChanged() &&
 		pi.Stashed+pi.Behind+pi.Ahead+pi.Unmerged+pi.Untracked == 0
+}
+func (pi *Status) Dirty() bool {
+	return !pi.IsNew && !pi.IsGone && (pi.Staged.HasChanged() || pi.UnStaged.HasChanged() ||
+		pi.Stashed+pi.Behind+pi.Ahead+pi.Unmerged+pi.Untracked > 0)
+}
+
+func (pi *Status) Count() int {
+	return pi.Staged.Count() + pi.UnStaged.Count() +
+		pi.Stashed + pi.Behind + pi.Ahead + pi.Unmerged + pi.Untracked
 }
 
 func (pi *Status) Bg() string {

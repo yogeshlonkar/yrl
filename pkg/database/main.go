@@ -13,22 +13,22 @@ import (
 var assets embed.FS
 
 const (
-	dbFile = "/tmp/.git_status_bar.db"
-	dsn    = "file:" + dbFile + "?cache=shared"
+	gitStatusDBFile = "/tmp/.git_status_bar.db"
+	gitStatusDSN    = "file:" + gitStatusDBFile + "?cache=shared"
 )
 
 func New() Database {
 	return &database{
-		&gitDatabase{newDB()},
+		&gitDatabase{dbInstance(gitStatusDBFile, gitStatusDSN)},
 	}
 }
 
-func newDB() *sql.DB {
+func dbInstance(dbFile, dsn string) *sql.DB {
 	setup := false
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
 		setup = true
 	}
-	fatal := log.Fatal().Str("dsn", dsn)
+	fatal := log.Fatal().Str("gitStatusDSN", dsn)
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		fatal.Err(err).Msg("Could not open assets")
