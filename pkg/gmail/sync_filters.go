@@ -17,7 +17,7 @@ type Filter struct {
 }
 
 type filterSetting struct {
-	Id      string   `yaml:"id,omitempty"`
+	ID      string   `yaml:"id,omitempty"`
 	From    []string `yaml:"from,omitempty,flow"`
 	Subject []string `yaml:"subject,omitempty,flow"`
 	Labels  []string `yaml:"labels,omitempty,flow"`
@@ -35,7 +35,7 @@ func (f *Filter) MarshalYAML() (interface{}, error) {
 		labels = f.Filter.Action.AddLabelIds
 	}
 	return &filterSetting{
-		Id:      f.Id,
+		ID:      f.Id,
 		From:    from,
 		Subject: subject,
 		Labels:  labels,
@@ -48,7 +48,7 @@ func (f *Filter) UnmarshalYAML(value *yaml.Node) error {
 		return err
 	}
 	f.Filter = &gmail.Filter{
-		Id: tempStruct.Id,
+		Id: tempStruct.ID,
 		Criteria: &gmail.FilterCriteria{
 			From:    construct("", tempStruct.From),
 			Subject: construct("", tempStruct.Subject),
@@ -62,7 +62,7 @@ func (f *Filter) UnmarshalYAML(value *yaml.Node) error {
 
 func (f *Filter) sync(gf *gmail.Filter, push bool) {
 	if f.Id != gf.Id {
-		log.Fatal().Strs("Ids", []string{f.Id, gf.Id}).Msgf("Can't sync filters")
+		log.Fatal().Strs("Ids", []string{f.Id, gf.Id}).Msg("can't sync filters")
 	}
 	if f.equal(&Filter{Filter: gf}) {
 		f.ok = true
@@ -112,25 +112,26 @@ func (filters Filters) lookup(gf *gmail.Filter) (*Filter, bool) {
 }
 
 func mergeFilters(filters *Filters, existing []*gmail.Filter, push bool) (pulls, pushes, unchanged int) {
-	log.Trace().Msg("Started mergeFilters")
+	log.Trace().Msg("started mergeFilters")
 	for _, gf := range existing {
 		if matched, ok := filters.lookup(gf); ok {
 			matched.sync(gf, push)
-			lEvent := log.Debug().Str("Id", matched.Id)
+			lEvent := log.Debug().Str("ID", matched.Id)
 			if matched.Criteria != nil {
 				lEvent.Str("From", matched.Criteria.From).Str("Subject", matched.Criteria.Subject)
 			}
-			if matched.pull {
-				lEvent.Msg("Pull Filter")
+			switch {
+			case matched.pull:
+				lEvent.Msg("pull Filter")
 				pulls++
-			} else if matched.push {
-				lEvent.Msg("Push Filter")
+			case matched.push:
+				lEvent.Msg("push Filter")
 				pushes++
-			} else {
+			default:
 				unchanged++
 			}
 		} else {
-			log.Debug().Str("Id", gf.Id).Msg("Unknown Filter found")
+			log.Debug().Str("ID", gf.Id).Msg("unknown Filter found")
 			*filters = append(*filters, &Filter{
 				gf,
 				state{
@@ -140,10 +141,10 @@ func mergeFilters(filters *Filters, existing []*gmail.Filter, push bool) (pulls,
 			pulls++
 		}
 	}
-	return
+	return pulls, pushes, unchanged
 }
 
-func deconstruct(field string, query string) []string {
+func deconstruct(field, query string) []string {
 	if query == "" {
 		return nil
 	}
@@ -169,58 +170,59 @@ func construct(field string, query []string) string {
 }
 
 func (s *syncService) SyncFilters() error {
-	log.Trace().Msg("Started SyncFilters")
+	log.Trace().Msg("started SyncFilters")
 	existing, err := s.svc.ListFilters()
 	if err != nil {
 		return err
 	}
 	pulls, pushes, unchanged := mergeFilters(&s.settings.Filters, existing.Filter, s.push)
-	var new, failed, missing int
+	var newCount, failed, missing int
 	for _, filter := range s.settings.Filters {
-		if filter.Id == "" {
+		switch {
+		case filter.Id == "":
 			if s.dryRun {
-				log.Info().Str("From", filter.Criteria.From).Str("Subject", filter.Criteria.Subject).Msg("Will create filter")
+				log.Info().Str("From", filter.Criteria.From).Str("Subject", filter.Criteria.Subject).Msg("will create filter")
 				continue
 			}
 			gl, err := s.svc.CreateFilter(filter.Filter)
 			if err != nil {
-				log.Error().Err(err).Str("From", filter.Criteria.From).Str("Subject", filter.Criteria.Subject).Msgf("Error creating filter")
+				log.Error().Err(err).Str("From", filter.Criteria.From).Str("Subject", filter.Criteria.Subject).Msg("error creating filter")
 				failed++
 			} else {
-				log.Info().Str("Id", gl.Id).Msg("Created filter")
+				log.Info().Str("ID", gl.Id).Msg("created filter")
 				filter.Id = gl.Id
-				new++
+				newCount++
 			}
-		} else if filter.push {
+		case filter.push:
 			if s.dryRun {
-				log.Info().Str("Id", filter.Id).Msg("Will update filter")
+				log.Info().Str("ID", filter.Id).Msg("will update filter")
 				continue
 			}
 			gf, err := s.svc.UpdateFilter(filter.Filter)
 			if err != nil {
-				log.Error().Err(err).Str("Id", filter.Id).Msgf("Error updating filter")
+				log.Error().Err(err).Str("ID", filter.Id).Msg("error updating filter")
 				failed++
 				pushes--
 			} else {
 				filter.Filter.Id = gf.Id
 			}
-		} else if filter.pull {
+		case filter.pull:
 			if s.dryRun {
-				log.Info().Str("Id", filter.Id).Msg("Will pull filter")
+				log.Info().Str("ID", filter.Id).Msg("will pull filter")
 				continue
 			}
-		} else if !filter.ok {
-			log.Error().Str("Id", filter.Id).Str("From", filter.Criteria.From).Str("Subject", filter.Criteria.Subject).Msgf("Error missing filter")
+		case !filter.ok:
+			log.Error().Str("ID", filter.Id).Str("From", filter.Criteria.From).Str("Subject", filter.Criteria.Subject).Msg("error missing filter")
 		}
 	}
-	if !s.dryRun && (new > 0 || pulls > 0 || pushes > 0) {
+	if !s.dryRun && (newCount > 0 || pulls > 0 || pushes > 0) {
 		s.settings.dirty = true
 	}
-	lEvent := log.Info().Int("New", new).Int("Pull", pulls).Int("Push", pushes).Int("Unchanged", unchanged)
+	lEvent := log.Info().Int("New", newCount).Int("Pull", pulls).Int("Push", pushes).Int("Unchanged", unchanged)
 	if s.dryRun {
-		lEvent.Msg("After sync filters will be")
+		lEvent.Msg("after sync filters will be")
 	} else {
-		lEvent.Int("Failed", failed).Int("Missing", missing).Msg("Filters sync complete")
+		lEvent.Int("Failed", failed).Int("Missing", missing).Msg("filters sync complete")
 	}
 	return nil
 }

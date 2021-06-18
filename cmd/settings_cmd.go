@@ -50,7 +50,7 @@ func settingsAction(c *cli.Context) error {
 	dryRun := c.Bool("dry-run")
 	push := c.Bool("push")
 	settingsFile := c.Path("settings")
-	log.Info().Str("credentials", credentials).Str("user", user).Msgf("Started sync gmail-settings")
+	log.Info().Str("credentials", credentials).Str("user", user).Msg("Started sync gmail-settings")
 	gmailSvc := gmail.NewService(c.Context, credentials, user)
 	syncSvc, closeSvc := gmail.NewSyncService(settingsFile, gmailSvc, dryRun, push)
 	defer closeSvc()

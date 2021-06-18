@@ -38,7 +38,7 @@ func (g gmailService) FindMessagesAndApplyLabel(from, subject string, labelIds [
 		buf.WriteString("subject:(" + subject + ")")
 	}
 	if buf.Len() == 0 {
-		return errors.New("No query to find messages")
+		return errors.New("no query to find messages")
 	}
 	q := buf.String()
 	resp, err := g.ListMessages(q, "", -1)
@@ -55,10 +55,10 @@ func (g gmailService) FindMessagesAndApplyLabel(from, subject string, labelIds [
 		resp, err = g.ListMessages(q, resp.NextPageToken, -1)
 	}
 	if len(ids) == 0 {
-		log.Warn().Strs("Labels", labelIds).Str("From", from).Str("Subject", subject).Msg("No message found to apply label")
+		log.Warn().Strs("Labels", labelIds).Str("From", from).Str("Subject", subject).Msg("no message found to apply label")
 		return nil
 	} else {
-		log.Debug().Int("Message", len(ids)).Msg("Applied label")
+		log.Debug().Int("Message", len(ids)).Msg("applied label")
 	}
 	return g.ApplyLabelToMessages(labelIds, ids)
 }

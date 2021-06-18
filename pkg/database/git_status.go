@@ -8,11 +8,11 @@ import (
 	"github.com/yogeshlonkar/yrl/pkg/git"
 )
 
-func (db *gitDatabase) GitStatus() (ID string, status *git.Status, updateTime time.Time, err error) {
+func (db *gitDatabase) GitStatus() (id string, status *git.Status, updateTime time.Time, err error) {
 	data := new([]byte)
 	status = new(git.Status)
 	row := db.QueryRow("SELECT id, ss, ut FROM git_status WHERE pk=0")
-	err = row.Scan(&ID, data, &updateTime)
+	err = row.Scan(&id, data, &updateTime)
 	if err != nil {
 		return
 	}
@@ -23,16 +23,16 @@ func (db *gitDatabase) GitStatus() (ID string, status *git.Status, updateTime ti
 	if err != nil {
 		return
 	}
-	return ID, status, updateTime, err
+	return id, status, updateTime, err
 }
 
-func (db *gitDatabase) SaveGitStatus(ID string, status *git.Status) (err error) {
+func (db *gitDatabase) SaveGitStatus(id string, status *git.Status) (err error) {
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
 	err = enc.Encode(status)
 	if err != nil {
 		return
 	}
-	_, err = db.Exec("INSERT OR REPLACE INTO git_status (pk, id, ss, ut) VALUES (0, ?, ?, ?)", ID, buf.Bytes(), time.Now())
+	_, err = db.Exec("INSERT OR REPLACE INTO git_status (pk, id, ss, ut) VALUES (0, ?, ?, ?)", id, buf.Bytes(), time.Now())
 	return
 }

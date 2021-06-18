@@ -31,21 +31,19 @@ func dbInstance(dbFile, dsn string) *sql.DB {
 	fatal := log.Fatal().Str("gitStatusDSN", dsn)
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
-		fatal.Err(err).Msg("Could not open assets")
+		fatal.Err(err).Msg("could not open assets")
 	}
-
-	//setup = true // Force update
 	if setup {
-		log.Debug().Msg("Setting up assets")
+		log.Debug().Msg("setting up assets")
 		files, _ := fs.Glob(assets, "assets/schemas/*")
 		for _, file := range files {
 			query, err := assets.ReadFile(file)
 			if err != nil {
-				log.Fatal().Err(err).Msg("Could not read schema files")
+				log.Fatal().Err(err).Msg("could not read schema files")
 			}
 			_, err = db.Exec(string(query))
 			if err != nil {
-				fatal.Err(err).Str("schema", file).Msg("Could created schema")
+				fatal.Err(err).Str("schema", file).Msg("could created schema")
 			}
 		}
 	}

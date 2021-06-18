@@ -25,7 +25,7 @@ func (d database) Git() Git {
 func (d database) Close() {
 	err := d.gitDatabase.Close()
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error while closing gitDatabase")
+		log.Fatal().Err(err).Msg("error while closing gitDatabase")
 	}
 }
 

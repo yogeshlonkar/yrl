@@ -19,28 +19,30 @@ type syncService struct {
 	dryRun, push bool
 }
 
-func NewSyncService(file string, svc Service, dryRun, push bool) (SyncService, func()) {
+func NewSyncService(file string, svc Service, dryRun, push bool) (syncSvc SyncService, closeSvc func()) {
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.Fatal().Err(err).Msgf("Unable to read settings %s file", file)
+		log.Fatal().Err(err).Msgf("unable to read settings %s file", file)
 	}
 	settings := &Settings{
 		path: file,
 	}
 	if err := yaml.Unmarshal(b, settings); err != nil {
-		log.Fatal().Err(err).Msg("Unable to parse settings")
+		log.Fatal().Err(err).Msg("unable to parse settings")
 	}
-	log.Trace().Str("Path", settings.path).Msg("Created syncService")
-	return &syncService{
-			settings,
-			svc,
-			dryRun,
-			push,
-		}, func() {
-			if settings.dirty {
-				settings.update()
-			}
+	log.Trace().Str("Path", settings.path).Msg("created syncService")
+	syncSvc = &syncService{
+		settings,
+		svc,
+		dryRun,
+		push,
+	}
+	closeSvc = func() {
+		if settings.dirty {
+			settings.update()
 		}
+	}
+	return
 }
 
 func (s *syncService) ExpectedSettings() *Settings {

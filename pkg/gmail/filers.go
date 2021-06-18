@@ -41,7 +41,7 @@ func (g gmailService) UpdateFilter(f *gmail.Filter) (*gmail.Filter, error) {
 func (g gmailService) mapLabelIds(f *gmail.Filter) error {
 	for i, label := range f.Action.AddLabelIds {
 		if !strings.HasPrefix(label, "Label_") {
-			if id, err := g.GetLabelById(false, label); err == nil {
+			if id, err := g.GetLabelID(false, label); err == nil {
 				f.Action.AddLabelIds[i] = id
 			} else {
 				return err

@@ -63,45 +63,45 @@ func consumeNext(s *bufio.Scanner) string {
 	return ""
 }
 
-func (pi *Status) ParsePorcelainV2(r io.Reader) {
+func (ss *Status) ParsePorcelainV2(r io.Reader) {
 	for s := bufio.NewScanner(r); s.Scan(); {
 		if len(s.Text()) < 1 {
 			continue
 		}
-		pi.ParseLine(s.Text())
+		ss.ParseLine(s.Text())
 	}
 }
 
-func (pi *Status) ParseLine(line string) {
+func (ss *Status) ParseLine(line string) {
 	s := bufio.NewScanner(strings.NewReader(line))
 	s.Split(bufio.ScanWords)
 	for s.Scan() {
 		switch s.Text() {
 		case "#":
-			if err := pi.parseBranchInfo(s); err != nil {
+			if err := ss.parseBranchInfo(s); err != nil {
 				log.Warn().Err(err).Msg("error parsing Branch")
 			}
 		case "1", "2":
-			pi.parseTrackedFile(s)
+			ss.parseTrackedFile(s)
 		case "u":
-			pi.Unmerged++
+			ss.Unmerged++
 		case "?":
-			pi.Untracked++
+			ss.Untracked++
 		}
 	}
 }
 
-func (pi *Status) parseBranchInfo(s *bufio.Scanner) (err error) {
+func (ss *Status) parseBranchInfo(s *bufio.Scanner) (err error) {
 	for s.Scan() {
 		switch s.Text() {
 		case "branch.oid":
-			pi.Commit = consumeNext(s)
+			ss.Commit = consumeNext(s)
 		case "branch.head":
-			pi.Branch = consumeNext(s)
+			ss.Branch = consumeNext(s)
 		case "branch.upstream":
-			pi.Upstream = consumeNext(s)
+			ss.Upstream = consumeNext(s)
 		case "branch.ab":
-			err = pi.parseAheadBehind(s)
+			err = ss.parseAheadBehind(s)
 			if err != nil {
 				log.Warn().Err(err).Msg("error parsing Branch.ab")
 			}
@@ -110,7 +110,7 @@ func (pi *Status) parseBranchInfo(s *bufio.Scanner) (err error) {
 	return err
 }
 
-func (pi *Status) parseAheadBehind(s *bufio.Scanner) error {
+func (ss *Status) parseAheadBehind(s *bufio.Scanner) error {
 	for s.Scan() {
 		i, err := strconv.Atoi(s.Text()[1:])
 		if err != nil {
@@ -118,62 +118,62 @@ func (pi *Status) parseAheadBehind(s *bufio.Scanner) error {
 		}
 		switch s.Text()[:1] {
 		case "+":
-			pi.Ahead = i
+			ss.Ahead = i
 		case "-":
-			pi.Behind = i
+			ss.Behind = i
 		}
 	}
 	return nil
 }
 
-func (pi *Status) parseTrackedFile(s *bufio.Scanner) {
+func (ss *Status) parseTrackedFile(s *bufio.Scanner) {
 	for index := 0; s.Scan(); index++ {
 		switch index {
 		case 0:
-			pi.parseXY(s.Text())
+			ss.parseXY(s.Text())
 		default:
 			break
 		}
 	}
 }
 
-func (pi *Status) parseXY(xy string) {
-	pi.Staged.parseSymbol(xy[:1])
-	pi.UnStaged.parseSymbol(xy[1:])
+func (ss *Status) parseXY(xy string) {
+	ss.Staged.parseSymbol(xy[:1])
+	ss.UnStaged.parseSymbol(xy[1:])
 }
 
-func (pi *Status) Clean() bool {
-	return !pi.IsNew && !pi.IsGone && !pi.Staged.HasChanged() && !pi.UnStaged.HasChanged() &&
-		pi.Stashed+pi.Behind+pi.Ahead+pi.Unmerged+pi.Untracked == 0
+func (ss *Status) Clean() bool {
+	return !ss.IsNew && !ss.IsGone && !ss.Staged.HasChanged() && !ss.UnStaged.HasChanged() &&
+		ss.Stashed+ss.Behind+ss.Ahead+ss.Unmerged+ss.Untracked == 0
 }
-func (pi *Status) Dirty() bool {
-	return !pi.IsNew && !pi.IsGone && (pi.Staged.HasChanged() || pi.UnStaged.HasChanged() ||
-		pi.Stashed+pi.Behind+pi.Ahead+pi.Unmerged+pi.Untracked > 0)
-}
-
-func (pi *Status) Count() int {
-	return pi.Staged.Count() + pi.UnStaged.Count() +
-		pi.Stashed + pi.Behind + pi.Ahead + pi.Unmerged + pi.Untracked
+func (ss *Status) Dirty() bool {
+	return !ss.IsNew && !ss.IsGone && (ss.Staged.HasChanged() || ss.UnStaged.HasChanged() ||
+		ss.Stashed+ss.Behind+ss.Ahead+ss.Unmerged+ss.Untracked > 0)
 }
 
-func (pi *Status) Bg() string {
-	if pi.Clean() {
+func (ss *Status) Count() int {
+	return ss.Staged.Count() + ss.UnStaged.Count() +
+		ss.Stashed + ss.Behind + ss.Ahead + ss.Unmerged + ss.Untracked
+}
+
+func (ss *Status) Bg() string {
+	if ss.Clean() {
 		return "120"
 	}
-	if pi.IsNew {
+	if ss.IsNew {
 		return "251"
 	}
-	if pi.IsGone {
+	if ss.IsGone {
 		return "088"
 	}
 	return "209"
 }
 
-func (pi *Status) Fg() string {
-	if pi.Clean() {
+func (ss *Status) Fg() string {
+	if ss.Clean() {
 		return "000"
 	}
-	if pi.IsGone {
+	if ss.IsGone {
 		return "255"
 	}
 	return "235"

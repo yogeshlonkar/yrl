@@ -25,7 +25,6 @@ import (
 	"github.com/yogeshlonkar/yrl/pkg/database"
 	"github.com/yogeshlonkar/yrl/pkg/git"
 	"github.com/yogeshlonkar/yrl/pkg/model"
-	"github.com/yogeshlonkar/yrl/pkg/statusline"
 )
 
 const (
@@ -66,16 +65,14 @@ func gitStatus() *cli.Command {
 				f, err := os.OpenFile(gitStatusLogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_TRUNC, 0666)
 				if err != nil {
 					syslog.Printf("Could not create log file %q", err)
-				} else {
-					if s, _ := f.Stat(); s != nil && s.Size() > maxLogSizeInKb {
-						err = f.Truncate(0)
-						if err != nil {
-							syslog.Printf("Could not truncate log file %q", err)
-						}
-						_, err = f.Seek(0, 0)
-						if err != nil {
-							syslog.Printf("Could not seek file to strat %q", err)
-						}
+				} else if s, _ := f.Stat(); s != nil && s.Size() > maxLogSizeInKb {
+					err = f.Truncate(0)
+					if err != nil {
+						syslog.Printf("Could not truncate log file %q", err)
+					}
+					_, err = f.Seek(0, 0)
+					if err != nil {
+						syslog.Printf("Could not seek file to strat %q", err)
 					}
 				}
 				if time.Now().Unix()%logSamplePerMinute == 0 {
@@ -102,23 +99,23 @@ func gitStatusAction(ctx *cli.Context) error {
 			g.Status = c
 		}
 	} else if err != sql.ErrNoRows {
-		log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("Could not fetch cached git status")
+		log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("could not fetch cached git status")
 	}
 	noTmux := ctx.Bool(tmuxFlag)
 	forceRemote := ctx.Bool(forceRemote)
 	if !g.Cached || forceRemote {
 		if !noTmux {
-			fmt.Printf(statusline.LoadingSegment)
+			fmt.Printf(git.LoadingSegment)
 		}
 		remoteUpdate(g, forceRemote, db)
 		getStatus(g)
 		if err := db.Git().SaveGitStatus(g.ID, g.Status); err != nil {
-			log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("Could insert/replace remote status")
+			log.Panic().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
 		}
 	}
-	g.StatusString = statusline.GenerateStatus(g, noTmux)
+	g.StatusString = g.StatusLine(noTmux)
 	fmt.Println(g.StatusString)
-	log.Info().Bool("cached", g.Cached).Str("took", time.Now().Sub(start).String()).Msg("Completed")
+	log.Info().Bool("cached", g.Cached).Str("took", time.Since(start).String()).Msg("completed")
 	return nil
 }
 
@@ -133,15 +130,15 @@ func validate(ctx *cli.Context) (g *model.GitRepo, err error) {
 	g.Status = new(git.Status)
 	fatal := log.Fatal().Str("AbsPath", g.AbsPath)
 	if g.AbsPath, err = filepath.Abs(g.AbsPath); err != nil {
-		fatal.Err(err).Msg("Could not get absolute AbsPath")
+		fatal.Err(err).Msg("could not get absolute AbsPath")
 	}
 	if isGit, _ := git.IsInsideWorkTree(g.AbsPath); !isGit {
-		log.Debug().Msg("Not a git repo")
+		log.Debug().Msg("not a git repo")
 		os.Exit(0)
 	}
 	g.FileInfo, err = os.Stat(g.AbsPath)
 	if err != nil || !g.IsDir() {
-		fatal.Err(err).Msg("Could not stat")
+		fatal.Err(err).Msg("could not stat")
 	}
 	g.ID = base64.StdEncoding.EncodeToString([]byte(g.AbsPath))
 	return
@@ -153,21 +150,19 @@ func remoteUpdate(g *model.GitRepo, forceUpdate bool, db database.Database) {
 	g.RemoteSuccess, err = db.Git().GitRemoteStatus(g.ID, time.Now().Add(-remoteUpdateInterval))
 	noRows := err != nil && err == sql.ErrNoRows
 	if forceUpdate || noRows {
-		log.Debug().Msg("Updating remote")
+		log.Debug().Msg("updating remote")
 		cmd := exec.Command("git", "remote", "update", "--prune")
 		cmd.Dir = g.AbsPath
 		_, err = cmd.Output()
 		if g.RemoteSuccess = err == nil; err != nil {
-			log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("Could update remote")
+			log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("could update remote")
 		}
 		if err = db.Git().SaveGitRemoteStatus(g.ID, g.RemoteSuccess); err != nil {
-			log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("Could insert/replace remote status")
+			log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
 		}
-		return
 	} else if err != nil {
-		log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("Could not fetch update status")
+		log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could not fetch update status")
 	}
-	return
 }
 
 func getStatus(g *model.GitRepo) {
@@ -179,7 +174,7 @@ func getStatus(g *model.GitRepo) {
 		cmd.Stdout = buf
 		cmd.Dir = g.AbsPath
 		if err := cmd.Run(); err != nil {
-			log.Fatal().Err(err).Msg("Could not get git status")
+			log.Fatal().Err(err).Msg("could not get git status")
 		}
 		s := new(git.Status)
 		s.ParsePorcelainV2(buf)
@@ -193,7 +188,7 @@ func getStatus(g *model.GitRepo) {
 		cmd.Stdout = buf
 		cmd.Dir = g.AbsPath
 		if err := cmd.Run(); err != nil {
-			log.Fatal().Err(err).Msg("Could not get git Root")
+			log.Fatal().Err(err).Msg("could not get git Root")
 		}
 		wg.Done()
 		g.Root = strings.Trim(buf.String(), "\n")
@@ -207,7 +202,7 @@ func getStatus(g *model.GitRepo) {
 			cmd.Stdout = buf
 			cmd.Dir = g.AbsPath
 			if err := cmd.Run(); err != nil {
-				log.Warn().Err(err).Msg("Could check remote branch")
+				log.Warn().Err(err).Msg("could check remote branch")
 			} else {
 				g.Status.IsGone = !strings.Contains(buf.String(), g.Status.Upstream)
 			}
@@ -219,29 +214,28 @@ func getStatus(g *model.GitRepo) {
 		file, err := os.Open(stashFile)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				log.Warn().Err(err).Msg("Could not open stash")
+				log.Warn().Err(err).Msg("could not open stash")
 			}
 		} else {
 			defer func(file *os.File) {
 				err := file.Close()
 				if err != nil {
-					log.Warn().Err(err).Msg("Error while closing stash file")
+					log.Warn().Err(err).Msg("error while closing stash file")
 				}
 			}(file)
 			if _, err := file.Stat(); err == nil {
 				reader := bufio.NewReader(file)
 				g.Status.Stashed, err = lineCounter(reader)
 				if err != nil {
-					log.Warn().Err(err).Msg("Error while reading stash")
+					log.Warn().Err(err).Msg("error while reading stash")
 				}
 			} else if !os.IsNotExist(err) {
-				log.Warn().Err(err).Msg("Could not access stash")
+				log.Warn().Err(err).Msg("could not access stash")
 			}
 		}
 		wg.Done()
 	}()
 	wg.Wait()
-	return
 }
 
 func lineCounter(r io.Reader) (int, error) {
@@ -259,4 +253,3 @@ func lineCounter(r io.Reader) (int, error) {
 		}
 	}
 }
-

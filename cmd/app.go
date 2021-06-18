@@ -23,10 +23,10 @@ const (
 
 func NewApp() *cli.App {
 	return &cli.App{
-		Name:    "yrl",
-		Usage:   "personal utility for yogesh",
-		Version: version,
-		Action:  mainAction,
+		Name:                 "yrl",
+		Usage:                "personal utility for yogesh",
+		Version:              version,
+		Action:               mainAction,
 		EnableBashCompletion: true,
 		Authors: []*cli.Author{
 			{
@@ -68,6 +68,6 @@ func NewApp() *cli.App {
 	}
 }
 
-func mainAction(c *cli.Context) error {
+func mainAction(_ *cli.Context) error {
 	return errors.New("not implemented yet")
 }

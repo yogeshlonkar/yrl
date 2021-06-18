@@ -22,7 +22,7 @@ func (g gmailService) UpdateLabel(l *gmail.Label) (*gmail.Label, error) {
 	return g.srv.Users.Labels.Update(g.user, l.Id, l).Do()
 }
 
-func (g gmailService) GetLabelById(invalidate bool, labelName string) (string, error) {
+func (g gmailService) GetLabelID(invalidate bool, labelName string) (string, error) {
 	if invalidate || len(labelCache) == 0 {
 		labelResp, err := g.ListLabels()
 		if err != nil {
@@ -35,5 +35,5 @@ func (g gmailService) GetLabelById(invalidate bool, labelName string) (string, e
 			return label.Id, nil
 		}
 	}
-	return "", fmt.Errorf("No id found for label %s", labelName)
+	return "", fmt.Errorf("no id found for label %s", labelName)
 }
