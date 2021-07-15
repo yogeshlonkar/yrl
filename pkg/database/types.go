@@ -18,17 +18,6 @@ type database struct {
 	*gitDatabase
 }
 
-func (d database) Git() Git {
-	return d.gitDatabase
-}
-
-func (d database) Close() {
-	err := d.gitDatabase.Close()
-	if err != nil {
-		log.Fatal().Err(err).Msg("error while closing gitDatabase")
-	}
-}
-
 type gitDatabase struct {
 	*sql.DB
 }
@@ -46,4 +35,15 @@ type GitStatus interface {
 type GitRemote interface {
 	GitRemoteStatus(ID string, updateTime time.Time) (remoteSuccess bool, err error)
 	SaveGitRemoteStatus(ID string, remoteSuccess bool) error
+}
+
+func (d database) Git() Git {
+	return d.gitDatabase
+}
+
+func (d database) Close() {
+	err := d.gitDatabase.Close()
+	if err != nil {
+		log.Fatal().Err(err).Msg("error while closing gitDatabase")
+	}
 }

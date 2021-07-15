@@ -29,7 +29,7 @@ import (
 
 const (
 	gitStatusLogFile     = "/tmp/.yrl_git_status.log"
-	cacheDuration        = 5 * time.Second
+	cacheDuration        = 2 * time.Second
 	remoteUpdateInterval = 15 * time.Minute
 	tmuxFlag             = "no-tmux"
 	forceRemote          = "remote-update"
@@ -104,10 +104,7 @@ func gitStatusAction(ctx *cli.Context) error {
 	noTmux := ctx.Bool(tmuxFlag)
 	forceRemote := ctx.Bool(forceRemote)
 	if !g.Cached || forceRemote {
-		if !noTmux {
-			fmt.Printf(git.LoadingSegment)
-		}
-		remoteUpdate(g, forceRemote, db)
+		remoteUpdate(g, forceRemote, noTmux, db)
 		getStatus(g)
 		if err := db.Git().SaveGitStatus(g.ID, g.Status); err != nil {
 			log.Panic().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
@@ -144,13 +141,16 @@ func validate(ctx *cli.Context) (g *model.GitRepo, err error) {
 	return
 }
 
-func remoteUpdate(g *model.GitRepo, forceUpdate bool, db database.Database) {
+func remoteUpdate(g *model.GitRepo, forceUpdate, noTmux bool, db database.Database) {
 	var err error
 	log.Debug().Bool("RemoteSuccess", g.RemoteSuccess).Bool("forceUpdate", forceUpdate).Send()
 	g.RemoteSuccess, err = db.Git().GitRemoteStatus(g.ID, time.Now().Add(-remoteUpdateInterval))
 	noRows := err != nil && err == sql.ErrNoRows
 	if forceUpdate || noRows {
 		log.Debug().Msg("updating remote")
+		if !noTmux {
+			fmt.Printf(git.LoadingSegment)
+		}
 		cmd := exec.Command("git", "remote", "update", "--prune")
 		cmd.Dir = g.AbsPath
 		_, err = cmd.Output()

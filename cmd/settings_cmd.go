@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	syslog "log"
+	"os"
+
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 
@@ -41,6 +45,18 @@ func gmailSettings() *cli.Command {
 			},
 		},
 		Action: settingsAction,
+		Before: func(c *cli.Context) error {
+			syslog.SetOutput(os.Stderr)
+			lvl := zerolog.InfoLevel
+			f := os.Stderr
+			if c.Bool("trace") {
+				lvl = zerolog.TraceLevel
+			} else if c.Bool("debug") {
+				lvl = zerolog.DebugLevel
+			}
+			log.Logger = log.Output(zerolog.ConsoleWriter{Out: f}).Level(lvl)
+			return nil
+		},
 	}
 }
 

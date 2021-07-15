@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerateStatus(t *testing.T) {
+func TestStatusLine(t *testing.T) {
 	tests := []struct {
 		name     string
 		status   *Status

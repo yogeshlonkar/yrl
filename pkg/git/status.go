@@ -34,7 +34,7 @@ type Area struct {
 }
 
 func (a *Area) HasChanged() bool {
-	return a.Added+a.Deleted+a.Modified+a.Copied+a.Renamed != 0
+	return a.Count() != 0
 }
 
 func (a *Area) parseSymbol(s string) {
@@ -143,12 +143,11 @@ func (ss *Status) parseXY(xy string) {
 }
 
 func (ss *Status) Clean() bool {
-	return !ss.IsNew && !ss.IsGone && !ss.Staged.HasChanged() && !ss.UnStaged.HasChanged() &&
-		ss.Stashed+ss.Behind+ss.Ahead+ss.Unmerged+ss.Untracked == 0
+	return !ss.IsNew && !ss.IsGone && ss.Count() == 0
 }
+
 func (ss *Status) Dirty() bool {
-	return !ss.IsNew && !ss.IsGone && (ss.Staged.HasChanged() || ss.UnStaged.HasChanged() ||
-		ss.Stashed+ss.Behind+ss.Ahead+ss.Unmerged+ss.Untracked > 0)
+	return !ss.IsNew && !ss.IsGone && ss.Count() > 0
 }
 
 func (ss *Status) Count() int {
@@ -157,24 +156,25 @@ func (ss *Status) Count() int {
 }
 
 func (ss *Status) Bg() string {
-	if ss.Clean() {
-		return "120"
+	switch {
+	case ss.Clean():
+		return backgroundClean
+	case ss.IsNew:
+		return backgroundNew
+	case ss.IsGone:
+		return backgroundGone
+	default:
+		return backgroundDefault
 	}
-	if ss.IsNew {
-		return "251"
-	}
-	if ss.IsGone {
-		return "088"
-	}
-	return "209"
 }
 
 func (ss *Status) Fg() string {
-	if ss.Clean() {
-		return "000"
+	switch {
+	case ss.Clean():
+		return foregroundClean
+	case ss.IsGone:
+		return foregroundGone
+	default:
+		return foregroundDefault
 	}
-	if ss.IsGone {
-		return "255"
-	}
-	return "235"
 }
