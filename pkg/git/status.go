@@ -23,6 +23,7 @@ type Status struct {
 	Untracked     int
 	Upstream      string
 	RemoteSuccess bool
+	Remote		  []string
 }
 
 type Area struct {
@@ -31,6 +32,18 @@ type Area struct {
 	Deleted  int
 	Renamed  int
 	Copied   int
+}
+
+func (ss *Status) GetFirstRemote() string {
+	if len(ss.Remote) > 0 {
+		return ""
+	}
+	// git@github.com:yogeshlonkar/yrl.git
+	remote := ss.Remote[0]
+	if strings.Contains(remote, "git@github.com:") {
+		return strings.Trim(strings.Replace(remote, "git@github.com:", "https://github.com/", 1), ".git")
+	}
+	return ""
 }
 
 func (a *Area) HasChanged() bool {

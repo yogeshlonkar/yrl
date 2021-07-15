@@ -52,6 +52,7 @@ func NewApp() *cli.App {
 		Commands: []*cli.Command{
 			gitStatus(),
 			gmailSettings(),
+			openCommand(),
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{

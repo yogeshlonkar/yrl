@@ -144,7 +144,10 @@ func validate(ctx *cli.Context) (g *model.GitRepo, err error) {
 func remoteUpdate(g *model.GitRepo, forceUpdate, noTmux bool, db database.Database) {
 	var err error
 	log.Debug().Bool("RemoteSuccess", g.RemoteSuccess).Bool("forceUpdate", forceUpdate).Send()
-	g.RemoteSuccess, err = db.Git().GitRemoteStatus(g.ID, time.Now().Add(-remoteUpdateInterval))
+	if g.Remote == nil {
+		g.Remote = make([]string, 1)
+	}
+	g.Remote[0], g.RemoteSuccess, err = db.Git().GitRemoteStatus(g.ID, time.Now().Add(-remoteUpdateInterval))
 	noRows := err != nil && err == sql.ErrNoRows
 	if forceUpdate || noRows {
 		log.Debug().Msg("updating remote")
@@ -157,7 +160,10 @@ func remoteUpdate(g *model.GitRepo, forceUpdate, noTmux bool, db database.Databa
 		if g.RemoteSuccess = err == nil; err != nil {
 			log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("could update remote")
 		}
-		if err = db.Git().SaveGitRemoteStatus(g.ID, g.RemoteSuccess); err != nil {
+		if g.Remote[0] == "" {
+			g.Remote = git.GetRemotes(g.AbsPath)
+		}
+		if err = db.Git().SaveGitRemoteStatus(g.ID, g.GetFirstRemote(), g.RemoteSuccess); err != nil {
 			log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
 		}
 	} else if err != nil {
