@@ -35,7 +35,7 @@ type Area struct {
 }
 
 func (ss *Status) GetFirstRemote() string {
-	if len(ss.Remote) > 0 {
+	if len(ss.Remote) <= 0 {
 		return ""
 	}
 	// git@github.com:yogeshlonkar/yrl.git
