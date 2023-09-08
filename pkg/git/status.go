@@ -23,7 +23,7 @@ type Status struct {
 	Untracked     int
 	Upstream      string
 	RemoteSuccess bool
-	Remote		  []string
+	Remote        []string
 }
 
 type Area struct {
@@ -164,8 +164,7 @@ func (ss *Status) Dirty() bool {
 }
 
 func (ss *Status) Count() int {
-	return ss.Staged.Count() + ss.UnStaged.Count() +
-		ss.Stashed + ss.Behind + ss.Ahead + ss.Unmerged + ss.Untracked
+	return ss.Staged.Count() + ss.UnStaged.Count() + ss.Behind + ss.Ahead + ss.Unmerged + ss.Untracked
 }
 
 func (ss *Status) Bg() string {

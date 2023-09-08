@@ -85,8 +85,13 @@ func gitStatus() *cli.Command {
 }
 
 func gitStatusAction(ctx *cli.Context) error {
+	noTmux := ctx.Bool(tmuxFlag)
 	g, err := validate(ctx)
 	if err != nil {
+		if errors.Is(err, git.ErrNotAGitRepo) {
+			fmt.Println((&model.GitRepo{Status: &git.Status{RemoteSuccess: true}}).StatusLine(noTmux))
+			return nil
+		}
 		return err
 	}
 	db := database.New()
@@ -101,12 +106,18 @@ func gitStatusAction(ctx *cli.Context) error {
 	} else if err != sql.ErrNoRows {
 		log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("could not fetch cached git status")
 	}
-	noTmux := ctx.Bool(tmuxFlag)
 	forceRemote := ctx.Bool(forceRemote)
 	if !g.Cached || forceRemote {
-		remoteUpdate(g, forceRemote, noTmux, db)
+		err = remoteUpdate(g, forceRemote, noTmux, db)
+		if err != nil {
+			g.StatusString = g.StatusLine(noTmux)
+			fmt.Println(g.StatusString)
+			return nil
+		}
 		getStatus(g)
 		if err := db.Git().SaveGitStatus(g.ID, g.Status); err != nil {
+			g.StatusString = g.StatusLine(noTmux)
+			fmt.Println(g.StatusString)
 			log.Panic().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
 		}
 	}
@@ -129,7 +140,9 @@ func validate(ctx *cli.Context) (g *model.GitRepo, err error) {
 	if g.AbsPath, err = filepath.Abs(g.AbsPath); err != nil {
 		fatal.Err(err).Msg("could not get absolute AbsPath")
 	}
-	if isGit, _ := git.IsInsideWorkTree(g.AbsPath); !isGit {
+	if isGit, err := git.IsInsideWorkTree(g.AbsPath); err != nil {
+		return nil, err
+	} else if !isGit {
 		log.Debug().Msg("not a git repo")
 		os.Exit(0)
 	}
@@ -141,7 +154,7 @@ func validate(ctx *cli.Context) (g *model.GitRepo, err error) {
 	return
 }
 
-func remoteUpdate(g *model.GitRepo, forceUpdate, noTmux bool, db database.Database) {
+func remoteUpdate(g *model.GitRepo, forceUpdate, noTmux bool, db database.Database) error {
 	var err error
 	log.Debug().Bool("RemoteSuccess", g.RemoteSuccess).Bool("forceUpdate", forceUpdate).Send()
 	if g.Remote == nil {
@@ -158,17 +171,21 @@ func remoteUpdate(g *model.GitRepo, forceUpdate, noTmux bool, db database.Databa
 		cmd.Dir = g.AbsPath
 		_, err = cmd.Output()
 		if g.RemoteSuccess = err == nil; err != nil {
-			log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("could update remote")
+			//log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("could update remote")
+			return err
 		}
 		if g.Remote[0] == "" {
 			g.Remote = git.GetRemotes(g.AbsPath)
 		}
 		if err = db.Git().SaveGitRemoteStatus(g.ID, g.GetFirstRemote(), g.RemoteSuccess); err != nil {
-			log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
+			//log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
+			return err
 		}
 	} else if err != nil {
-		log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could not fetch update status")
+		//log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could not fetch update status")
+		return err
 	}
+	return nil
 }
 
 func getStatus(g *model.GitRepo) {

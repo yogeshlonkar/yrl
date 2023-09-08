@@ -20,29 +20,31 @@ const (
 	backgroundNew      = "251"
 	backgroundTerminal = "235"
 	branchMaxLen       = 50
+	foregroundGreen    = "22"
 	foregroundClean    = "000"
 	foregroundDefault  = "235"
 	foregroundError    = "254"
 	foregroundGone     = "255"
 	foregroundPrevious = "033"
-	iconAdded          = ""
-	iconAhead          = "ﯴ"
+	iconAdded          = "\U000F034C "
+	iconAhead          = "\uF403"
 	iconArrowRight     = "\uE0B0"
-	iconBehind         = "ﯲ"
-	iconChanged        = "*"
-	iconClean          = "\uF62B"
-	iconCopied         = ""
-	iconDeleted        = "-"
+	iconBehind         = "\uF404 "
+	iconChanged        = "\U000F1787 "
+	iconClean          = "\uEBB1"
+	iconCopied         = "\U000F0191 "
+	iconDeleted        = "\U000F0AD3 "
 	iconDirty          = "\uF256"
-	iconGit            = "\uE725"
-	iconGone           = ""
+	iconGit            = "\uF418"
+	iconGone           = " "
 	iconLoading        = "\uF46A"
-	iconNew            = ""
-	iconRenamed        = "易"
+	iconNew            = " "
+	iconRenamed        = "\U000F04E1 "
 	iconSeparator      = "\uE621"
-	iconStaged         = "\uF01C"
+	iconStaged         = "\uF01C "
+	iconStashed        = " "
 	iconSyncFailed     = "\uF41C"
-	iconUnmerged       = ""
+	iconUnmerged       = "\U000F1A98 "
 	whiteSpace         = " "
 )
 
@@ -127,9 +129,21 @@ func segment(noTmux bool, fg, bg, str string) string {
 	return powerlineSegment(fg, bg, str)
 }
 
+type Segment []string
+
+func (s *Segment) Counter(count int, segs ...string) {
+	if count > 0 {
+		*s = append(*s, fmt.Sprintf("%d%s", count, strings.Join(segs, "")))
+	}
+}
+
+func (s *Segment) String() string {
+	return strings.Join(*s, iconSeparator)
+}
+
 func (ss *Status) StatusLine(noTmux bool) string {
 	sl := new(statusLine)
-	if !ss.RemoteSuccess {
+	if ss != nil && !ss.RemoteSuccess {
 		startArrow := segment(noTmux, foregroundPrevious, backgroundError, iconArrowRight)
 		startColor := segment(noTmux, foregroundError, backgroundError, whiteSpace)
 		endColor := segment(noTmux, backgroundError, ss.Bg(), "")
@@ -139,42 +153,53 @@ func (ss *Status) StatusLine(noTmux bool) string {
 		startArrow := segment(noTmux, foregroundPrevious, ss.Bg(), iconArrowRight)
 		sl.add(startArrow)
 	}
-	sl.add(segment(noTmux, ss.Fg(), ss.Bg(), "") + whiteSpace + iconGit + whiteSpace)
-	sl.add(shortBranch(ss.Branch))
-	sl.add(whiteSpace)
-	switch {
-	case ss.IsNew:
-		sl.add(iconNew)
-	case ss.IsGone:
-		sl.add(iconGone)
-	case ss.Clean():
-		sl.add(iconClean)
-	case ss.Dirty():
-		sl.add(iconDirty)
+	if ss.Branch != "" {
+		sl.add(segment(noTmux, ss.Fg(), ss.Bg(), "") + whiteSpace + iconGit + whiteSpace)
+		sl.add(shortBranch(ss.Branch))
+		sl.add(whiteSpace)
+		switch {
+		case ss.IsNew:
+			sl.add(iconNew)
+		case ss.IsGone:
+			sl.add(iconGone)
+		case ss.Clean():
+			startColor := segment(noTmux, foregroundGreen, ss.Bg(), iconClean)
+			endColor := segment(noTmux, backgroundTerminal, ss.Bg(), " ")
+			sl.add(startColor + endColor)
+			//sl.add(iconClean)
+		case ss.Dirty():
+			startColor := segment(noTmux, backgroundGone, ss.Bg(), iconDirty)
+			endColor := segment(noTmux, backgroundTerminal, ss.Bg(), " ")
+			sl.add(startColor + endColor)
+			//sl.add(iconDirty)
+		}
+		// separator
+		segments := &Segment{}
+
+		segments.Counter(ss.Ahead, iconAhead)
+		segments.Counter(ss.Behind, iconBehind)
+		segments.Counter(ss.Unmerged, iconUnmerged)
+		// separator
+
+		segments.Counter(ss.Untracked+ss.UnStaged.Added, iconAdded)
+		segments.Counter(ss.UnStaged.Deleted, iconDeleted)
+		segments.Counter(ss.UnStaged.Modified, iconChanged)
+		segments.Counter(ss.UnStaged.Renamed, iconRenamed)
+		segments.Counter(ss.UnStaged.Copied, iconCopied)
+		if ss.Staged.Renamed == 0 {
+			segments.Counter(ss.Staged.Count(), iconStaged)
+		} else {
+			if ss.Staged.Count()-ss.Staged.Renamed > 0 {
+				segments.Counter(ss.Staged.Renamed, iconRenamed)
+				segments.Counter(ss.Staged.Count()-ss.Staged.Renamed, iconStaged)
+			} else {
+				segments.Counter(ss.Staged.Renamed, iconRenamed, iconStaged)
+			}
+		}
+		segments.Counter(ss.Stashed, iconStashed)
+		sl.addIf(len(*segments) > 0, segments.String())
+		//sl.add(" ")
 	}
-	sl.addIf(ss.Count() > 0, whiteSpace, iconSeparator)
-	// separator
-
-	sl.addIf(ss.Ahead, iconAhead)
-	sl.addIf(ss.Ahead > 0 && ss.Behind > 0, iconSeparator)
-	sl.addIf(ss.Behind, iconBehind)
-	sl.addIf((ss.Ahead > 0 || ss.Behind > 0) && ss.Unmerged > 0, iconSeparator)
-	sl.addIf(ss.Unmerged, iconUnmerged)
-	sl.addIf(ss.Ahead+ss.Behind+ss.Unmerged > 0 && ss.Untracked+ss.UnStaged.Count() > 0, iconSeparator)
-	// separator
-
-	sl.addIf(ss.Untracked+ss.UnStaged.Added, iconAdded)
-	sl.addIf(ss.UnStaged.Deleted, iconDeleted)
-	sl.addIf(ss.UnStaged.Modified, iconChanged)
-	sl.addIf(ss.UnStaged.Renamed, iconRenamed)
-	sl.addIf(ss.UnStaged.Copied, iconCopied)
-	sl.addIf(ss.Untracked+ss.UnStaged.Count() > 0 && ss.Staged.Count()+ss.Stashed > 0, iconSeparator)
-	// separator
-
-	sl.addIf(ss.Staged.Count(), iconStaged)
-	sl.addIf(ss.Staged.Count() > 0 && ss.Stashed > 0, iconSeparator)
-	sl.addIf(ss.Stashed, "")
-	sl.add(" ")
 	if noTmux {
 		sl.add(fmt.Sprintf("\033[0m\033[38;5;%[1]sm%[2]s\033[0m", ss.Bg(), iconArrowRight))
 	} else {
