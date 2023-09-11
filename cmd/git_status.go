@@ -72,7 +72,7 @@ func gitStatus() *cli.Command {
 					}
 					_, err = f.Seek(0, 0)
 					if err != nil {
-						syslog.Printf("Could not seek file to strat %q", err)
+						syslog.Printf("Could not seek file to start %q", err)
 					}
 				}
 				if time.Now().Unix()%logSamplePerMinute == 0 {
@@ -88,8 +88,7 @@ func gitStatusAction(ctx *cli.Context) error {
 	noTmux := ctx.Bool(tmuxFlag)
 	g, err := validate(ctx)
 	if err != nil {
-		if errors.Is(err, git.ErrNotAGitRepo) {
-			fmt.Println((&model.GitRepo{Status: &git.Status{RemoteSuccess: true}}).StatusLine(noTmux))
+		if errors.Is(err, git.ErrNotInAGitRepo) {
 			return nil
 		}
 		return err
@@ -103,23 +102,28 @@ func gitStatusAction(ctx *cli.Context) error {
 		if g.Cached {
 			g.Status = c
 		}
-	} else if err != sql.ErrNoRows {
+	} else if !errors.Is(err, sql.ErrNoRows) {
 		log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("could not fetch cached git status")
 	}
 	forceRemote := ctx.Bool(forceRemote)
 	if !g.Cached || forceRemote {
-		err = remoteUpdate(g, forceRemote, noTmux, db)
-		if err != nil {
+		g.Loading = true
+		getStatus(g)
+		if err = remoteUpdate(g, forceRemote, noTmux, db); err != nil {
 			g.StatusString = g.StatusLine(noTmux)
 			fmt.Println(g.StatusString)
 			return nil
 		}
+		g.Loading = false
 		getStatus(g)
-		if err := db.Git().SaveGitStatus(g.ID, g.Status); err != nil {
+		// log.Trace().Err(err).Msg("Continuing without remote update")
+		if err = db.Git().SaveGitStatus(g.ID, g.Status); err != nil {
 			g.StatusString = g.StatusLine(noTmux)
 			fmt.Println(g.StatusString)
 			log.Panic().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
 		}
+	} else {
+		g.RemoteSuccess = true
 	}
 	g.StatusString = g.StatusLine(noTmux)
 	fmt.Println(g.StatusString)
@@ -155,34 +159,45 @@ func validate(ctx *cli.Context) (g *model.GitRepo, err error) {
 }
 
 func remoteUpdate(g *model.GitRepo, forceUpdate, noTmux bool, db database.Database) error {
-	var err error
 	log.Debug().Bool("RemoteSuccess", g.RemoteSuccess).Bool("forceUpdate", forceUpdate).Send()
-	if g.Remote == nil {
-		g.Remote = make([]string, 1)
+	savedRemote, err := db.Git().GetRemoteURL(g.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Trace().Str("AbsPath", g.AbsPath).Msg("no git status saved for repository")
+			forceUpdate = true
+		} else {
+			return err
+		}
 	}
-	g.Remote[0], g.RemoteSuccess, err = db.Git().GitRemoteStatus(g.ID, time.Now().Add(-remoteUpdateInterval))
-	noRows := err != nil && err == sql.ErrNoRows
-	if forceUpdate || noRows {
-		log.Debug().Msg("updating remote")
-		if !noTmux {
-			fmt.Printf(git.LoadingSegment)
-		}
-		cmd := exec.Command("git", "remote", "update", "--prune")
-		cmd.Dir = g.AbsPath
-		_, err = cmd.Output()
-		if g.RemoteSuccess = err == nil; err != nil {
-			//log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("could update remote")
+	if !forceUpdate {
+		g.Remote = []string{savedRemote}
+		g.RemoteSuccess, err = db.Git().GitRemoteStatus(g.ID, time.Now().Add(-remoteUpdateInterval))
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				log.Trace().Str("AbsPath", g.AbsPath).Err(err).Msg("no update required at this time")
+				g.RemoteSuccess = true
+				return nil
+			}
 			return err
 		}
-		if g.Remote[0] == "" {
-			g.Remote = git.GetRemotes(g.AbsPath)
-		}
-		if err = db.Git().SaveGitRemoteStatus(g.ID, g.GetFirstRemote(), g.RemoteSuccess); err != nil {
-			//log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
-			return err
-		}
-	} else if err != nil {
-		//log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could not fetch update status")
+	}
+	if len(g.Remote) == 0 {
+		g.Remote = git.GetRemotes(g.AbsPath)
+	}
+	getStatus(g)
+	g.Loading = true
+	g.StatusString = g.StatusLine(noTmux)
+	fmt.Println(g.StatusString)
+	log.Debug().Msg("updating remote")
+	cmd := exec.Command("git", "remote", "update", "--prune")
+	cmd.Dir = g.AbsPath
+	_, err = cmd.Output()
+	if g.RemoteSuccess = err == nil; err != nil {
+		log.Warn().Str("AbsPath", g.AbsPath).Err(err).Msg("could update remote")
+		return err
+	}
+	if err = db.Git().SaveGitRemoteStatus(g.ID, g.GetFirstRemote(), g.RemoteSuccess, time.Now().Add(remoteUpdateInterval)); err != nil {
+		// log.Fatal().Str("AbsPath", g.AbsPath).Err(err).Msg("could insert/replace remote status")
 		return err
 	}
 	return nil

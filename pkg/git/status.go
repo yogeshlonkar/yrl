@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+
+	"github.com/yogeshlonkar/yrl/pkg/ansi"
 )
 
 type Status struct {
@@ -24,6 +26,7 @@ type Status struct {
 	Upstream      string
 	RemoteSuccess bool
 	Remote        []string
+	Loading       bool
 }
 
 type Area struct {
@@ -170,23 +173,23 @@ func (ss *Status) Count() int {
 func (ss *Status) Bg() string {
 	switch {
 	case ss.Clean():
-		return backgroundClean
+		return ansi.BackgroundClean
 	case ss.IsNew:
-		return backgroundNew
+		return ansi.BackgroundNew
 	case ss.IsGone:
-		return backgroundGone
+		return ansi.BackgroundGone
 	default:
-		return backgroundDefault
+		return ansi.BackgroundDefault
 	}
 }
 
 func (ss *Status) Fg() string {
 	switch {
 	case ss.Clean():
-		return foregroundClean
+		return ansi.ForegroundClean
 	case ss.IsGone:
-		return foregroundGone
+		return ansi.ForegroundGone
 	default:
-		return foregroundDefault
+		return ansi.ForegroundDefault
 	}
 }

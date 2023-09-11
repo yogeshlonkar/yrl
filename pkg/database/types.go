@@ -34,8 +34,8 @@ type GitStatus interface {
 
 type GitRemote interface {
 	GetRemoteURL(ID string) (string, error)
-	GitRemoteStatus(ID string, updateTime time.Time) (remote string, remoteSuccess bool, err error)
-	SaveGitRemoteStatus(ID, remote string, remoteSuccess bool) error
+	GitRemoteStatus(ID string, updateTime time.Time) (remoteSuccess bool, err error)
+	SaveGitRemoteStatus(ID, remote string, remoteSuccess bool, add time.Time) error
 }
 
 func (d database) Git() Git {
