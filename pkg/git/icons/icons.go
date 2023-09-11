@@ -6,11 +6,10 @@ const (
 	ArrowRight = ""  // nf-pl-left_hard_divider
 	Behind     = " " // nf-oct-download
 	Bugfix     = " " // nf-fa-bug
-	Chore      = "󰃢 " // nf-md-broom
+	Chore      = "󱦡 " // nf-md-vacuum
 	Clean      = ""  // nf-cod-check_all
 	Copied     = "󰆑 " // nf-md-content_duplicate
 	Deleted    = "󰫓 " // nf-md-minus_circle_multiple_outline
-	Dirty      = " " // nf-fa-hand_stop_o
 	Divider    = "|"
 	Failed     = "󰓧"  // nf-md-sync_alert
 	Feature    = " " // nf-fa-lightbulb_o

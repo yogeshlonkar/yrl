@@ -14,32 +14,22 @@ const (
 	headLen      = 8
 )
 
-var (
-	bugfix  = regexp.MustCompile("(bug)?fix(es)?/")
-	feat    = regexp.MustCompile("feat(ures?)?/")
-	hotfix  = regexp.MustCompile("hotfix/")
-	chore   = regexp.MustCompile("chores?/")
-	release = regexp.MustCompile("releases?/")
-)
+var branchTypes = map[string]*regexp.Regexp{
+	icons.Feature: regexp.MustCompile("^feat(ures?)?/"),
+	icons.Bugfix:  regexp.MustCompile("^(bug)?fix(es)?/"),
+	icons.Hotfix:  regexp.MustCompile("^hotfix/"),
+	icons.Chore:   regexp.MustCompile("^chores?/"),
+	icons.Release: regexp.MustCompile("^releases?/"),
+}
 
 func shortBranch(branch string) string {
 	var icon string
-	switch {
-	case feat.MatchString(branch):
-		icon = icons.Feature
-		branch = feat.ReplaceAllString(branch, "")
-	case hotfix.MatchString(branch):
-		icon = icons.Hotfix
-		branch = hotfix.ReplaceAllString(branch, "")
-	case release.MatchString(branch):
-		icon = icons.Release
-		branch = release.ReplaceAllString(branch, "")
-	case chore.MatchString(branch):
-		icon = icons.Chore
-		branch = chore.ReplaceAllString(branch, "")
-	case bugfix.MatchString(branch):
-		icon = icons.Bugfix
-		branch = bugfix.ReplaceAllString(branch, "")
+	for icn, patten := range branchTypes {
+		if patten.MatchString(branch) {
+			branch = patten.ReplaceAllString(branch, "")
+			icon = icn
+			break
+		}
 	}
 	for strLen := range branch {
 		if strLen >= branchMaxLen {

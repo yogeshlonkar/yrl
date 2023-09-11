@@ -55,7 +55,7 @@ func TestStatusLine_tmux(t *testing.T) {
 		{
 			"Chore",
 			&Status{Branch: "chore/branch1", RemoteSuccess: true},
-			"#[fg=color025,bg=color120] #[fg=color000,bg=color120]\uf418 \U000f00e2 branch1\ue621#[fg=color22,bg=color120]\uebb1#[fg=color235,bg=color120] #[fg=color120,bg=color235]\ue0b0",
+			"#[fg=color025,bg=color120] #[fg=color000,bg=color120]\uf418 \U000f19a1 branch1\ue621#[fg=color22,bg=color120]\uebb1#[fg=color235,bg=color120] #[fg=color120,bg=color235]\ue0b0",
 		},
 		{
 			"Branch-Too-Long",
@@ -155,7 +155,7 @@ func TestStatusLine_no_tmux(t *testing.T) {
 		{
 			"Chore",
 			&Status{Branch: "chore/branch1", RemoteSuccess: true},
-			"\x1b[38;5;025m\x1b[48;5;120m \x1b[38;5;000m\x1b[48;5;120m\uf418 \U000f00e2 branch1\ue621\x1b[38;5;22m\x1b[48;5;120m\uebb1\x1b[38;5;235m\x1b[48;5;120m \x1b[0m\x1b[38;5;120m\ue0b0\x1b[0m",
+			"\x1b[38;5;025m\x1b[48;5;120m \x1b[38;5;000m\x1b[48;5;120m\uf418 \U000f19a1 branch1\ue621\x1b[38;5;22m\x1b[48;5;120m\uebb1\x1b[38;5;235m\x1b[48;5;120m \x1b[0m\x1b[38;5;120m\ue0b0\x1b[0m",
 		},
 		{
 			"Branch-Too-Long",
