@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-var ErrNotAGitRepo = errors.New("not a git repo")
+var ErrNotInAGitRepo = errors.New("not in a git repo")
 
 const notRepoStatus string = "exit status 128"
 
@@ -17,15 +17,16 @@ func IsInsideWorkTree(cwd string) (bool, error) {
 	cmd.Dir = cwd
 	out, err := cmd.Output()
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				if status.ExitStatus() == 128 {
-					return false, ErrNotAGitRepo
+					return false, ErrNotInAGitRepo
 				}
 			}
 		}
 		if cmd.ProcessState.String() == notRepoStatus {
-			return false, ErrNotAGitRepo
+			return false, ErrNotInAGitRepo
 		}
 		return false, err
 	}

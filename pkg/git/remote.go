@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	gitRemoteRegex = regexp.MustCompile(`\w+\s+([^\/]+\/[^\.]+)\.git\s.*`)
+	gitRemoteRegex = regexp.MustCompile(`\w+\s+([^/]+/[^.]+)\.git\s.*`)
 )
 
 func GetRemotes(cwd string) (remotes []string) {
@@ -20,7 +20,7 @@ func GetRemotes(cwd string) (remotes []string) {
 	log.Debug().Str("output", output)
 	if err == nil {
 		for _, line := range strings.Split(output, "\n") {
-			if gitRemoteRegex.Match([]byte(line)) {
+			if gitRemoteRegex.MatchString(line) {
 				groups := gitRemoteRegex.FindAllSubmatch([]byte(line), -1)
 				remotes = append(remotes, string(groups[0][1]))
 			}
